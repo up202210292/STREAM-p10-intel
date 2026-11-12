@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -O2 -fopenmp
+#CC = gcc
+CFLAGS+=-O2 -fopenmp -lmemkind
 
 FC = gfortran
 FFLAGS = -O2 -fopenmp

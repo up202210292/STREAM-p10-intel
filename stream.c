@@ -47,6 +47,9 @@
 # include <limits.h>
 # include <sys/time.h>
 
+#include <memkind.h>
+#include <stdlib.h>
+
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
  *
@@ -91,7 +94,7 @@
  *          per array.
  */
 #ifndef STREAM_ARRAY_SIZE
-#   define STREAM_ARRAY_SIZE	10000000
+#   define STREAM_ARRAY_SIZE (2*1024*1024*1024ull) // 16GB if using double
 #endif
 
 /*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result
@@ -176,9 +179,22 @@
 #define STREAM_TYPE double
 #endif
 
-static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
-			b[STREAM_ARRAY_SIZE+OFFSET],
-			c[STREAM_ARRAY_SIZE+OFFSET];
+// Must define MEMKIND_A, MEMKIND_B, MEMKIND_C
+static STREAM_TYPE *a, *b, *c;
+
+#ifndef MEMKIND_A
+	#define MEMKIND_A MEMKIND_HBW_ALL
+#endif
+#ifndef MEMKIND_B
+	#define MEMKIND_B MEMKIND_HBW_ALL
+#endif
+#ifndef MEMKIND_C
+	#define MEMKIND_C MEMKIND_HBW_ALL
+#endif
+
+// static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
+// 			b[STREAM_ARRAY_SIZE+OFFSET],
+// 			c[STREAM_ARRAY_SIZE+OFFSET];
 
 static double	avgtime[4] = {0}, maxtime[4] = {0},
 		mintime[4] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
@@ -207,6 +223,16 @@ extern int omp_get_num_threads();
 int
 main()
     {
+    size_t arrsize = (STREAM_ARRAY_SIZE+OFFSET)*sizeof(STREAM_TYPE);
+    a = memkind_malloc(MEMKIND_A, arrsize);
+    b = memkind_malloc(MEMKIND_B, arrsize);
+    c = memkind_malloc(MEMKIND_C, arrsize);
+
+    if (a == NULL || b == NULL || c == NULL) {
+        perror("Failed to allocate arrays");
+        exit(1);
+    }
+
     int			quantum, checktick();
     int			BytesPerWord;
     int			k;
